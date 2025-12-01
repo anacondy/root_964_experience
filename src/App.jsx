@@ -947,8 +947,8 @@ const CodeRunner = ({ files, setFiles, currentFileIndex, setCurrentFileIndex }) 
           ) : (
              <>
                <input type="file" multiple ref={fileInputRef} className="hidden" onChange={handleFileUpload} />
-               {/* Folder Input - uses specific attribute */}
-               <input type="file" ref={folderInputRef} className="hidden" webkitdirectory="" mozdirectory="" directory="" onChange={handleFileUpload} />
+               {/* Folder Input - uses webkitdirectory for folder selection */}
+               <input type="file" ref={folderInputRef} className="hidden" {...{ webkitdirectory: "" }} onChange={handleFileUpload} />
                
                <button onClick={handleCreateFile} className="px-4 border border-[var(--acid-green)] hover:bg-[var(--acid-green)] hover:text-black transition-all flex items-center justify-center" title="New File"><FilePlus size={18} /></button>
                <button onClick={() => fileInputRef.current?.click()} className="flex-1 border border-[var(--acid-green)] hover:bg-[var(--acid-green)] hover:text-black py-3 text-sm font-bold tracking-widest flex items-center justify-center gap-2 transition-all"><Upload size={16} /> UPLOAD FILE</button>
