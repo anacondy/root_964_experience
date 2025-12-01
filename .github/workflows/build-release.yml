@@ -1,0 +1,224 @@
+# Multi-Platform Build Workflow
+# Builds downloadable packages for Windows, Linux, and Android
+name: Build Release Packages
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version number (e.g., 2.0.25)'
+        required: true
+        default: '2.0.25'
+
+permissions:
+  contents: write
+
+jobs:
+  build-web:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build web assets
+        run: npm run build
+
+      - name: Upload web build
+        uses: actions/upload-artifact@v4
+        with:
+          name: web-build
+          path: dist/
+
+  build-desktop:
+    needs: build-web
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-latest
+            platform: linux
+            ext: tar.gz
+          - os: windows-latest
+            platform: windows
+            ext: zip
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download web build
+        uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: dist/
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Create package directory
+        run: |
+          mkdir -p package
+          cp -r dist/* package/
+
+      - name: Create launcher script (Linux)
+        if: matrix.platform == 'linux'
+        run: |
+          cat > package/start.sh << 'EOF'
+          #!/bin/bash
+          SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+          if command -v xdg-open &> /dev/null; then
+              xdg-open "$SCRIPT_DIR/index.html"
+          elif command -v open &> /dev/null; then
+              open "$SCRIPT_DIR/index.html"
+          else
+              echo "Open index.html in your browser"
+          fi
+          EOF
+          chmod +x package/start.sh
+
+      - name: Create launcher script (Windows)
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          @"
+          @echo off
+          start "" "%~dp0index.html"
+          "@ | Out-File -FilePath package/start.bat -Encoding ASCII
+
+      - name: Create README for package
+        run: |
+          cat > package/README.txt << 'EOF'
+          √964 Pinocchio Experience
+          =========================
+
+          To run this application:
+
+          Windows: Double-click start.bat or open index.html in your browser
+          Linux: Run ./start.sh or open index.html in your browser
+
+          Requirements:
+          - Modern web browser (Chrome, Firefox, Edge, Safari)
+          - JavaScript enabled
+          - Recommended: 4GB RAM, 2 CPU cores
+
+          For best experience:
+          - Use a Chromium-based browser
+          - Enable hardware acceleration
+          - Use headphones for audio effects
+
+          Copyright © 2024. All Rights Reserved.
+          EOF
+
+      - name: Package for Linux
+        if: matrix.platform == 'linux'
+        run: |
+          VERSION=${{ github.event.inputs.version || github.ref_name }}
+          VERSION=${VERSION#v}
+          tar -czvf root-964-experience-${VERSION}-linux.tar.gz -C package .
+
+      - name: Package for Windows
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $version = "${{ github.event.inputs.version || github.ref_name }}"
+          $version = $version -replace '^v', ''
+          Compress-Archive -Path package/* -DestinationPath "root-964-experience-$version-windows.zip"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-package
+          path: root-964-experience-*
+
+  build-android:
+    needs: build-web
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download web build
+        uses: actions/download-artifact@v4
+        with:
+          name: web-build
+          path: dist/
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Capacitor
+        run: |
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+
+      - name: Initialize Capacitor
+        run: |
+          npx cap init "Root 964 Experience" "com.root964.experience" --web-dir=dist
+
+      - name: Add Android platform
+        run: npx cap add android
+
+      - name: Copy web assets
+        run: npx cap copy android
+
+      - name: Build Android Debug APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug
+
+      - name: Rename APK
+        run: |
+          VERSION=${{ github.event.inputs.version || github.ref_name }}
+          VERSION=${VERSION#v}
+          mv android/app/build/outputs/apk/debug/app-debug.apk root-964-experience-${VERSION}.apk
+
+      - name: Upload Android APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-apk
+          path: root-964-experience-*.apk
+
+  create-release:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: [build-desktop, build-android]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            artifacts/**/*.tar.gz
+            artifacts/**/*.zip
+            artifacts/**/*.apk
+          generate_release_notes: true
+          draft: false
+          prerelease: false

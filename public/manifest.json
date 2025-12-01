@@ -1,0 +1,19 @@
+{
+  "name": "√964 Pinocchio Experience",
+  "short_name": "√964",
+  "description": "An immersive digital art experience inspired by the 1991 Shozin Fukui cyberpunk film",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#080808",
+  "theme_color": "#d4ff00",
+  "orientation": "any",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["entertainment", "art"]
+}
