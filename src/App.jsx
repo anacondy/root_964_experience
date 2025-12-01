@@ -113,118 +113,6 @@ const SoundFX = {
   }
 };
 
-/* FONTS & GLOBAL STYLES */
-const Fonts = () => (
-  <style dangerouslySetInnerHTML={{__html: `
-    @import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Noto+Sans+JP:wght@400;700;900&family=Space+Mono:ital,wght@0,400;0,700;1,400&display=swap');
-    
-    :root {
-      --acid-green: #d4ff00;
-      --deep-black: #080808;
-      --off-black: #111111;
-      --scan-line-color: rgba(212, 255, 0, 0.05);
-      --alert-red: #ff2a2a;
-    }
-
-    body {
-      background-color: var(--deep-black);
-      color: var(--acid-green);
-      font-family: 'Space Mono', monospace;
-      overflow-x: hidden;
-      cursor: default;
-    }
-
-    ::-webkit-scrollbar { width: 4px; height: 4px; }
-    ::-webkit-scrollbar-track { background: var(--deep-black); }
-    ::-webkit-scrollbar-thumb { background: var(--acid-green); border-radius: 0px; }
-
-    .font-poster { font-family: 'Archivo Black', sans-serif; }
-    .font-jp { font-family: 'Noto Sans JP', sans-serif; }
-    .text-acid { color: var(--acid-green); }
-    .bg-acid { background-color: var(--acid-green); }
-    .border-acid { border-color: var(--acid-green); }
-    
-    textarea::placeholder, input::placeholder {
-      color: rgba(212, 255, 0, 0.3);
-      font-style: italic;
-      letter-spacing: 1px;
-    }
-
-    .noise-overlay {
-      position: fixed;
-      top: 0; left: 0; width: 100%; height: 100%;
-      pointer-events: none;
-      z-index: 50;
-      opacity: 0.05;
-      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-    }
-
-    .scanlines {
-      background: linear-gradient(
-        to bottom,
-        rgba(255,255,255,0),
-        rgba(255,255,255,0) 50%,
-        rgba(0,0,0,0.2) 50%,
-        rgba(0,0,0,0.2)
-      );
-      background-size: 100% 4px;
-      position: fixed;
-      top: 0; right: 0; bottom: 0; left: 0;
-      z-index: 51;
-      pointer-events: none;
-      opacity: 0.6;
-    }
-
-    .glitch-hover:hover {
-      animation: glitch-anim-1 0.3s infinite linear alternate-reverse;
-      text-shadow: 2px 0 red, -2px 0 blue;
-    }
-    
-    .page-transition {
-      animation: fadeIn 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); filter: blur(10px); }
-      to { opacity: 1; transform: translateY(0); filter: blur(0); }
-    }
-
-    .vertical-text {
-      writing-mode: vertical-rl;
-      text-orientation: upright;
-      letter-spacing: 0.2em;
-    }
-    
-    .gauge-needle {
-      transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1);
-    }
-
-    @keyframes ripple-panic {
-      0% { transform: scale(1); opacity: 0.8; border-color: var(--alert-red); }
-      100% { transform: scale(3); opacity: 0; border-color: var(--alert-red); }
-    }
-    
-    .animate-ripple {
-      position: absolute;
-      top: 0; left: 0; right: 0; bottom: 0;
-      border-radius: 50%;
-      border: 1px solid var(--alert-red);
-      animation: ripple-panic 1.5s cubic-bezier(0, 0.2, 0.8, 1) infinite;
-    }
-
-    .text-alert {
-      color: var(--alert-red);
-      text-shadow: 0 0 5px var(--alert-red);
-      animation: pulse-red 0.5s infinite;
-    }
-    
-    @keyframes pulse-red {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.7; }
-    }
-  `}} />
-);
-
 /* UTILITIES */
 const formatBytes = (bytes, decimals = 2) => {
   if (!+bytes) return '0 B';
@@ -1059,8 +947,8 @@ const CodeRunner = ({ files, setFiles, currentFileIndex, setCurrentFileIndex }) 
           ) : (
              <>
                <input type="file" multiple ref={fileInputRef} className="hidden" onChange={handleFileUpload} />
-               {/* Folder Input - uses specific attribute */}
-               <input type="file" ref={folderInputRef} className="hidden" webkitdirectory="" mozdirectory="" directory="" onChange={handleFileUpload} />
+               {/* Folder Input - uses webkitdirectory for folder selection */}
+               <input type="file" ref={folderInputRef} className="hidden" {...{ webkitdirectory: "" }} onChange={handleFileUpload} />
                
                <button onClick={handleCreateFile} className="px-4 border border-[var(--acid-green)] hover:bg-[var(--acid-green)] hover:text-black transition-all flex items-center justify-center" title="New File"><FilePlus size={18} /></button>
                <button onClick={() => fileInputRef.current?.click()} className="flex-1 border border-[var(--acid-green)] hover:bg-[var(--acid-green)] hover:text-black py-3 text-sm font-bold tracking-widest flex items-center justify-center gap-2 transition-all"><Upload size={16} /> UPLOAD FILE</button>
@@ -1252,8 +1140,7 @@ const HomePage = ({ navigate }) => {
 const App = () => {
   const [page, setPage] = useState('home');
   return (
-    <div className="antialiased min-h-screen text-[var(--acid-green)] selection:bg-[var(--acid-green)] selection:text-black">
-      <Fonts />
+    <div className="antialiased min-h-screen min-h-[100dvh] text-[var(--acid-green)] selection:bg-[var(--acid-green)] selection:text-black">
       <div className="noise-overlay"></div>
       <div className="scanlines"></div>
       <main className="relative z-10">
